@@ -1,21 +1,81 @@
-Steps to Implement
-1. Set Up Your Environment
-- Install Java Development Kit (JDK)
-- Install Apache Tomcat (Servlet Container)
-- Set up an IDE (Eclipse, IntelliJ, or VScode)
+import javax.servlet.*;
+import javax.servlet.http.*;
+import java.io.*;
+import java.sql.*;
+import java.util.*;
 
-2. Create an HTML Login Form (login.html)
-This form collects the username and password from the user.
+public class EmployeeServlet extends HttpServlet {
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/company_db";
+    private static final String DB_USER = "root"; // replace with your DB username
+    private static final String DB_PASSWORD = ""; // replace with your DB password
 
-3. Create the Java Servlet to Process Login (LoginServlet.java)
-This servlet reads username and password from the request.
-It checks the credentials.
-- If valid, it displays a welcome message.
-- If invalid, it redirects back to the login page.
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        // Set response content type
+        response.setContentType("text/html");
 
-4.  Configure web.xml
-5. Deploy and Run
-- Place the login.html file inside the WebContent (for VScode) or webapp (for Maven projects).
-- Compile and deploy the servlet in Tomcat.
-Access the form in your browser:
-http://localhost:8080/login.html
+        // Get the employee ID from the request (if any)
+        String empId = request.getParameter("emp_id");
+
+        // Initialize the database connection and output writer
+        PrintWriter out = response.getWriter();
+        Connection conn = null;
+        Statement stmt = null;
+        ResultSet rs = null;
+
+        try {
+            // Establish database connection
+            conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+
+            // Prepare SQL query based on whether an ID was provided
+            String query;
+            if (empId != null && !empId.isEmpty()) {
+                query = "SELECT * FROM employees WHERE emp_id = ?";
+            } else {
+                query = "SELECT * FROM employees";
+            }
+
+            PreparedStatement ps = conn.prepareStatement(query);
+
+            if (empId != null && !empId.isEmpty()) {
+                ps.setInt(1, Integer.parseInt(empId));
+            }
+
+            rs = ps.executeQuery();
+
+            // Display employee details
+            out.println("<html><body>");
+            out.println("<h2>Employee List</h2>");
+            out.println("<table border='1'>");
+            out.println("<tr><th>Employee ID</th><th>Name</th><th>Email</th><th>Department</th></tr>");
+
+            while (rs.next()) {
+                int id = rs.getInt("emp_id");
+                String name = rs.getString("emp_name");
+                String email = rs.getString("emp_email");
+                String department = rs.getString("emp_department");
+
+                out.println("<tr>");
+                out.println("<td>" + id + "</td>");
+                out.println("<td>" + name + "</td>");
+                out.println("<td>" + email + "</td>");
+                out.println("<td>" + department + "</td>");
+                out.println("</tr>");
+            }
+            out.println("</table>");
+            out.println("</body></html>");
+        } catch (SQLException e) {
+            e.printStackTrace();
+            out.println("<html><body><h2>Error accessing database.</h2></body></html>");
+        } finally {
+            // Clean up resources
+            try {
+                if (rs != null) rs.close();
+                if (stmt != null) stmt.close();
+                if (conn != null) conn.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
+
